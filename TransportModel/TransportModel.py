@@ -20,6 +20,7 @@ class TransportModel(mesa.Model):
         self.grid = mesa.space.MultiGrid(width, height, True)
         self.schedule = mesa.time.RandomActivation(self)
         self.running = True
+        self.passengers = []
 
         # Create passenger agents
         # 1 for now
@@ -30,6 +31,7 @@ class TransportModel(mesa.Model):
             y = self.random.randrange(self.grid.height)
             a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y)
             # self.schedule.add(a)
+            self.passengers.append(a)
             self.grid.place_agent(a, (x, y))
 
         # Create car agents

@@ -26,10 +26,11 @@ class Car(mesa.Agent):
         super().__init__(unique_id, model)
         self.src = Location(x, y)
         self.current = self.src
-        self.next_dest = Location(self.random.randrange(grid_width),self.random.randrange(grid_height))
+        self.next_dest = model.passengers[0].current
         print(self.src, self.next_dest)
         self.passengers = []
         self.max_passengers = max_passengers
+        self.model = model
 
     def move(self):
         if self.current.x < self.next_dest.x:
@@ -45,18 +46,21 @@ class Car(mesa.Agent):
 
         
     def step(self):
+        
         if self.current.x == self.next_dest.x and self.current.y == self.next_dest.y:            
             print("Destination Reached")
+            self.next_dest = self.passengers[0].dest
         else:
             self.move()
 
         # If Passengers waiting at current cell, take them onbboard
         this_cell = self.model.grid.get_cell_list_contents([self.pos])
         potential_passengers = [obj for obj in this_cell if isinstance(obj, Passenger)]
-        while len(potential_passengers) > 0 and len(self.passengers) < len(self.max_passengers):
+        if len(potential_passengers) > 0 and len(self.passengers) < self.max_passengers:
             # TO DO: choose passenger according to some order
             # passenger = self.random.choice(potential_passengers) 
             passenger = potential_passengers[0]
-            potential_passengers.remove(passenger)
+            # potential_passengers.remove(passenger)
             self.model.grid.remove_agent(passenger)
+            self.passengers.append(passenger)
 
