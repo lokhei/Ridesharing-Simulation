@@ -6,7 +6,7 @@ def compute_manhattan(model):
     # TO DO: should be calculating using actual distance travelled 
     total_dist = 0
     for agent in model.schedule.agents:
-        total_dist += abs(agent.src.x - agent.next_dest.x) + abs(agent.src.y - agent.next_dest.y)
+        total_dist += abs(agent.current.x - agent.next_dest.x) + abs(agent.current.y - agent.next_dest.y)
     return total_dist
 
 class TransportModel(mesa.Model):
@@ -20,18 +20,16 @@ class TransportModel(mesa.Model):
         self.grid = mesa.space.MultiGrid(width, height, True)
         self.schedule = mesa.time.RandomActivation(self)
         self.running = True
-        self.passengers = []
+        self.clients = []
+        self.cars = []
 
         # Create passenger agents
-        # 1 for now
-        # TO DO: Don't create agents all at once? on a schedule, e.g. every 5 timesteps?
         for i in range(self.num_agents):
             # Add the agent to a random grid cell
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
             a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y)
-            # self.schedule.add(a)
-            self.passengers.append(a)
+            self.clients.append(a)
             self.grid.place_agent(a, (x, y))
 
         # Create car agents
@@ -40,8 +38,9 @@ class TransportModel(mesa.Model):
             # Add the agent to a random grid cell
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            a = Car(self.next_id(), self, self.grid.width, self.grid.height, x, y)
+            a = Car(self.next_id(), self, x, y)
             self.schedule.add(a)
+            self.cars.append(a)
             self.grid.place_agent(a, (x, y))
 
         self.datacollector = mesa.DataCollector(
@@ -51,3 +50,16 @@ class TransportModel(mesa.Model):
     def step(self):
         self.datacollector.collect(self)
         self.schedule.step()
+        # TO DO: only create new agent is current number of clients waiting < 5 
+        if (self.schedule.steps % 20 == 0):
+            # Create new passenger agent
+            x = self.random.randrange(self.grid.width)
+            y = self.random.randrange(self.grid.height)
+            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y)
+            self.clients.append(a)
+            self.grid.place_agent(a, (x, y))
+            self.cars[0].update_destinations(a)
+
+
+
+        
