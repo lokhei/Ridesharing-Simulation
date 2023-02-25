@@ -7,6 +7,14 @@ class Location:
     x: int
     y: int
 
+@dataclass
+class PassengerLoc:
+    src: Location
+    dest: Location
+
+class destVis(mesa.Agent):
+    def __init__(self, unique_id, model):
+        super().__init__(unique_id, model)
 
 class Passenger(mesa.Agent):
     """An agent with starting location and target destination"""
@@ -16,7 +24,7 @@ class Passenger(mesa.Agent):
         self.src = Location(x, y)
         self.dest = Location(self.random.randrange(grid_width),self.random.randrange(grid_height))
         self.num_people = 1
-        print(self.src, self.dest)
+        print(f"Agent {unique_id}: {self.src} to {self.dest}")
 
 
 class Car(mesa.Agent):
@@ -26,26 +34,23 @@ class Car(mesa.Agent):
         super().__init__(unique_id, model)
         self.current =  Location(x, y)
         self.destinations = self.get_destinations()
-        self.next_dest =  self.destinations[0]
+        self.next_dest =  self.destinations[0].src
         self.passengers = []
         self.max_passengers = max_passengers
         self.model = model
-
-        # print(self.current, self.next_dest)
+        self.dest_vis = None
 
 
     def get_destinations(self):
         destinations = []
         for client in self.model.clients:
-            destinations.append(client.src)
-            destinations.append(client.dest)
+            destinations.append(PassengerLoc(client.src, client.dest))
 
         return destinations
     
     def update_destinations(self, passenger):
-        self.destinations.append(passenger.src)
-        self.destinations.append(passenger.dest)
-        if len(self.destinations)==2:
+        self.destinations.append(PassengerLoc(passenger.src, passenger.dest))
+        if len(self.destinations)==1:
             self.next_dest = passenger.src
 
 
@@ -65,17 +70,30 @@ class Car(mesa.Agent):
     def step(self):
         # if at destination point
         if self.current.x == self.next_dest.x and self.current.y == self.next_dest.y:            
-            print("Destination Reached", self.current.x, self.current.y, self.destinations)
-            if self.destinations:
+            print("Destination Reached")
+            if self.destinations and self.next_dest == self.destinations[0].src:
+                self.next_dest = self.destinations[0].dest
+                self.dest_vis = destVis(self.model.next_id(), self)
+                self.model.grid.place_agent(self.dest_vis, (self.next_dest.x, self.next_dest.y))
+
+            elif self.destinations and self.next_dest == self.destinations[0].dest:
                 self.destinations.pop(0)
-            if self.destinations:
-                self.next_dest = self.destinations[0]
-            else:
-                print("Waiting for new client", self.destinations)
+                self.model.grid.remove_agent(self.dest_vis)
+
+                if self.destinations:
+                    self.next_dest = self.destinations[0].src
+            if not self.destinations:
+                print("Waiting for new client")
         if self.destinations:
             self.move()
 
-        # NEXT TO DO: extend to include new passengers in next timestep
+
+        # NEXT TO DO: Add passengers using closest first algorithm
+        # Allow multiple passengers on 
+        # Have agents showing passenger stops?
+
+        # Not Base case: Allow multiple cars
+
         # If Passengers waiting at current cell, take them onbboard
         # Passengers currently chosen in a queue-based order
         this_cell = self.model.grid.get_cell_list_contents([self.pos])

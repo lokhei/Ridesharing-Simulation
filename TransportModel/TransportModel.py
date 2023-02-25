@@ -3,7 +3,6 @@ import mesa
 from Agents import Passenger, Car
 
 def compute_manhattan(model):
-    # TO DO: should be calculating using actual distance travelled 
     total_dist = 0
     for agent in model.schedule.agents:
         total_dist += abs(agent.current.x - agent.next_dest.x) + abs(agent.current.y - agent.next_dest.y)
@@ -15,7 +14,7 @@ class TransportModel(mesa.Model):
     def __init__(self, num_passengers, num_cars, width, height):
         super().__init__()
 
-        self.num_agents = num_passengers
+        self.num_passengers = num_passengers
         self.num_cars = num_cars
         self.grid = mesa.space.MultiGrid(width, height, True)
         self.schedule = mesa.time.RandomActivation(self)
@@ -24,7 +23,7 @@ class TransportModel(mesa.Model):
         self.cars = []
 
         # Create passenger agents
-        for i in range(self.num_agents):
+        for i in range(self.num_passengers):
             # Add the agent to a random grid cell
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
@@ -51,7 +50,7 @@ class TransportModel(mesa.Model):
         self.datacollector.collect(self)
         self.schedule.step()
         # TO DO: only create new agent is current number of clients waiting < 5 
-        if (self.schedule.steps % 20 == 0):
+        if (self.schedule.steps % 15 == 0):
             # Create new passenger agent
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)

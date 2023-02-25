@@ -1,21 +1,25 @@
 import mesa
-from mesa.visualization.modules import CanvasGrid
-from mesa.visualization.modules import ChartModule
+from mesa.visualization.modules import CanvasGrid, ChartModule
 from TransportModel import TransportModel, Car, Passenger
 
 def agent_portrayal(agent):
     portrayal = {
         "Shape": "circle",
-        "Color": "red",
+        "Color": "green",
         "Filled": "true",
-        "Layer": 0,
+        "Layer": 0.1,
         "r": 0.5,
     }
+
     if type(agent) is Car:
         portrayal["Shape"] = "Images\icons8-people-in-car-side-view-50.png"
-        
+       
     elif type(agent) is Passenger:
         portrayal["Shape"] = "Images\icons8-body-type-short-50.png"
+
+    else:
+        portrayal["Shape"] = "circle"
+        portrayal["Layer"] = 0
     return portrayal
 
 
