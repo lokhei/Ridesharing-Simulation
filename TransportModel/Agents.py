@@ -19,11 +19,13 @@ class destVis(mesa.Agent):
 class Passenger(mesa.Agent):
     """An agent with starting location and target destination"""
 
-    def __init__(self, unique_id, model, grid_width, grid_height, x, y):
+    def __init__(self, unique_id, model, grid_width, grid_height, x, y, num_people = 1):
         super().__init__(unique_id, model)
         self.src = Location(x, y)
         self.dest = Location(self.random.randrange(grid_width),self.random.randrange(grid_height))
-        self.num_people = 1
+        while self.src == self.dest:
+            self.dest = Location(self.random.randrange(grid_width),self.random.randrange(grid_height))
+        self.num_people = num_people
         print(f"Agent {unique_id}: {self.src} to {self.dest}")
 
 
@@ -49,9 +51,10 @@ class Car(mesa.Agent):
         return destinations
     
     def update_destinations(self, passenger):
-        self.destinations.append(PassengerLoc(passenger.src, passenger.dest))
-        if len(self.destinations)==1:
-            self.next_dest = passenger.src
+        if passenger.num_people < self.max_passengers:
+            self.destinations.append(PassengerLoc(passenger.src, passenger.dest))
+            if len(self.destinations)==1:
+                self.next_dest = passenger.src
 
 
     def move(self):
@@ -79,6 +82,7 @@ class Car(mesa.Agent):
             elif self.destinations and self.next_dest == self.destinations[0].dest:
                 self.destinations.pop(0)
                 self.model.grid.remove_agent(self.dest_vis)
+                self.passengers.pop(0)
 
                 if self.destinations:
                     self.next_dest = self.destinations[0].src
@@ -90,7 +94,6 @@ class Car(mesa.Agent):
 
         # NEXT TO DO: Add passengers using closest first algorithm
         # Allow multiple passengers on 
-        # Have agents showing passenger stops?
 
         # Not Base case: Allow multiple cars
 
@@ -98,8 +101,9 @@ class Car(mesa.Agent):
         # Passengers currently chosen in a queue-based order
         this_cell = self.model.grid.get_cell_list_contents([self.pos])
         potential_passengers = [obj for obj in this_cell if isinstance(obj, Passenger)]
-        if len(potential_passengers) > 0:
+
+        if len(potential_passengers) > 0 and sum(client.num_people for client in potential_passengers) < self.max_passengers:
             passenger = potential_passengers[0]
             self.model.grid.remove_agent(passenger)
-            # self.passengers.append(passenger)
+            self.passengers.append(passenger)
 
