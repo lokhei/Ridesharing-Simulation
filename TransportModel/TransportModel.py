@@ -1,6 +1,6 @@
 import mesa
 
-from Agents import Passenger, Car
+from Agents import Passenger, Car, StepType
 
 def compute_manhattan(model):
     total_dist = 0
@@ -37,7 +37,7 @@ class TransportModel(mesa.Model):
             # Add the agent to a random grid cell
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            a = Car(self.next_id(), self, x, y)
+            a = Car(self.next_id(), self, x, y, step_type=StepType.CLOSEST)
             self.schedule.add(a)
             self.cars.append(a)
             self.grid.place_agent(a, (x, y))
@@ -50,7 +50,7 @@ class TransportModel(mesa.Model):
         self.datacollector.collect(self)
         self.schedule.step()
         # TO DO: only create new agent is current number of clients waiting < 5 
-        if (self.schedule.steps % 15 == 0):
+        if (self.schedule.steps % 12 == 0):
             # Create new passenger agent
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
