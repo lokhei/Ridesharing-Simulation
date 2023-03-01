@@ -27,7 +27,7 @@ class TransportModel(mesa.Model):
             # Add the agent to a random grid cell
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y)
+            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y, self.schedule.steps)
             self.clients.append(a)
             self.grid.place_agent(a, (x, y))
 
@@ -37,7 +37,7 @@ class TransportModel(mesa.Model):
             # Add the agent to a random grid cell
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            a = Car(self.next_id(), self, x, y, step_type=StepType.CLOSEST)
+            a = Car(self.next_id(), self, x, y, step_type=StepType.WAITING)
             self.schedule.add(a)
             self.cars.append(a)
             self.grid.place_agent(a, (x, y))
@@ -50,11 +50,11 @@ class TransportModel(mesa.Model):
         self.datacollector.collect(self)
         self.schedule.step()
         # TO DO: only create new agent is current number of clients waiting < 5 
-        if (self.schedule.steps % 12 == 0):
+        if (self.schedule.steps % 5 == 0):
             # Create new passenger agent
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y)
+            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y, self.schedule.steps)
             self.clients.append(a)
             self.grid.place_agent(a, (x, y))
             self.cars[0].update_destinations(a)
