@@ -30,6 +30,7 @@ class Passenger(mesa.Agent):
     def __init__(self, unique_id, model, grid_width, grid_height, x, y, step, num_people = 1):
         super().__init__(unique_id, model)
         self.src = Location(x, y)
+
         self.dest = Location(self.random.randrange(grid_width),self.random.randrange(grid_height))
         while self.src == self.dest:
             self.dest = Location(self.random.randrange(grid_width),self.random.randrange(grid_height))
@@ -37,6 +38,15 @@ class Passenger(mesa.Agent):
         print(f"Agent {unique_id}: {self.src} to {self.dest}")
         self.waiting_time = self.random.randrange(5,50)
         self.request_time = step
+
+    def step(self):
+        # passenger leaves if past waiting time
+        if self.pos and self.model.schedule.steps > self.request_time + self.waiting_time:
+            self.model.schedule.remove(self)
+            self.model.grid.remove_agent(self)
+            self.model.clients.remove(self)
+            print(f"Waited too long - passenger {self.unique_id} has left")
+
 
 
 class Car(mesa.Agent):
@@ -163,10 +173,15 @@ class Car(mesa.Agent):
                     self.model.grid.remove_agent(passenger)
                     self.passengers.append(passenger)
                 
-                self.next_dest = self.passengers[0].dest
-                self.dest_vis = destVis(self.model.next_id(), self)
-                self.model.grid.place_agent(self.dest_vis, (self.next_dest.x, self.next_dest.y))
-                self.is_src = False
+                    self.next_dest = self.passengers[0].dest
+                    self.dest_vis = destVis(self.model.next_id(), self)
+                    self.model.grid.place_agent(self.dest_vis, (self.next_dest.x, self.next_dest.y))
+                    self.is_src = False
+                else:
+                    if self.step_type == StepType.CLOSEST:
+                        self.next_dest = self.find_closest().src
+                    elif self.step_type == StepType.WAITING:
+                        self.next_dest = self.find_closest_waiting().src
                 
             else:
                 del_pass = self.passengers.pop(0)
@@ -178,8 +193,6 @@ class Car(mesa.Agent):
                     if self.step_type == StepType.CLOSEST:
                         self.next_dest = self.find_closest().src
                     elif self.step_type == StepType.WAITING:
-                        # print(self.find_closest_waiting().waiting_time)
-                        # print(self.find_closest_waiting().request_time)
                         self.next_dest = self.find_closest_waiting().src
                 self.is_src = True
                 
