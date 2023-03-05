@@ -11,6 +11,6 @@ $ pip install Mesa
 
 ### How to Run
 ```
-$ cd Transport Model
+$ cd TransportModel
 $ python transport_vis.py
 ```
