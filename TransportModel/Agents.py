@@ -35,17 +35,15 @@ class Passenger(mesa.Agent):
             self.dest = Location(self.random.randrange(grid_width),self.random.randrange(grid_height))
         self.num_people = num_people
         print(f"Agent {unique_id}: {self.src} to {self.dest}")
-        self.waiting_time = self.random.randrange(5,50)
+        self.waiting_time = self.random.randrange(5,20)
         self.request_time = step
 
     def step(self):
         # passenger leaves if past waiting time
-        pass
-        # if self.pos and self.model.schedule.steps > self.request_time + self.waiting_time:
-        #     self.model.schedule.remove(self)
-        #     self.model.grid.remove_agent(self)
-        #     self.model.clients.remove(self)
-        #     print(f"Waited too long - passenger {self.unique_id} has left")
+        if self.pos and self.model.schedule.steps > self.request_time + self.waiting_time:
+            self.model.schedule.remove(self)
+            self.model.grid.remove_agent(self)
+            print(f"Waited too long - passenger {self.unique_id} has left")
 
 
 
@@ -64,14 +62,33 @@ class Car(mesa.Agent):
         self.is_waiting = False
         self.is_src = True
 
+    def check_arrival_lte_waiting(self, passenger, dest):
+        passenger_arrival_constr = passenger.waiting_time + passenger.request_time
+        arrival_time = self.calc_manhattan(self.current, dest) + self.model.schedule.steps
+        return arrival_time <= passenger_arrival_constr
+
 
     def set_next_dest(self):
-        if self.step_type == StepType.QUEUE:
-            self.next_dest = self.model.clients[0].src
-        elif self.step_type == StepType.CLOSEST:
-            self.next_dest = self.find_closest().src
-        elif self.step_type == StepType.WAITING:
-            self.next_dest = self.find_closest_waiting().src
+        if self.model.clients:
+            if self.step_type == StepType.QUEUE:
+                passenger = self.model.clients[0]
+            elif self.step_type == StepType.CLOSEST:
+                passenger = self.find_closest()
+            elif self.step_type == StepType.WAITING:
+                passenger = self.find_closest_waiting()
+
+            # skip passenger if not able to reach passenger location in time
+            if not self.check_arrival_lte_waiting(passenger, passenger.src):
+                self.model.clients.remove(passenger)
+                self.set_next_dest()
+            else:
+                self.next_dest = passenger.src
+                self.is_waiting = False
+                self.is_src = True
+
+        else:
+            self.is_waiting = True
+        
 
 
     def move(self):
@@ -89,17 +106,19 @@ class Car(mesa.Agent):
         
     def step(self):
         if self.is_waiting and self.model.clients:
-            self.next_dest = self.model.clients[0].src
-            self.is_waiting = False
-            self.is_src = True
+            self.set_next_dest()
         self.step_algo()
+
+
+    def calc_manhattan(self, src, dest):
+        return abs(src.x - dest.x) + abs(src.y - dest.y)
         
 
     def find_closest(self):
         closest = self.model.clients[0]
-        min_distance = abs(self.model.clients[0].src.x - self.current.x) + abs(self.model.clients[0].src.y - self.current.y)
+        min_distance = self.calc_manhattan(self.model.clients[0].src, self.current)
         for p_dests in self.model.clients:
-            curr_dist = abs(p_dests.src.x - self.current.x) + abs(p_dests.src.y - self.current.y)
+            curr_dist = self.calc_manhattan(p_dests.src, self.current)
             if min_distance > curr_dist:
                 min_distance = curr_dist
                 closest = p_dests
