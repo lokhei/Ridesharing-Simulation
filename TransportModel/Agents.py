@@ -29,6 +29,7 @@ class Passenger(mesa.Agent):
 
     def __init__(self, unique_id, model, grid_width, grid_height, x, y, step, num_people = 1):
         super().__init__(unique_id, model)
+        self.type = "Passenger"
         self.src = Location(x, y)
         self.dest = Location(self.random.randrange(grid_width),self.random.randrange(grid_height))
         while self.src == self.dest:
@@ -52,6 +53,7 @@ class Car(mesa.Agent):
 
     def __init__(self, unique_id, model, x, y, max_passengers=4, step_type = StepType.QUEUE):
         super().__init__(unique_id, model)
+        self.type = "Car"
         self.step_type = step_type
         self.current =  Location(x, y)
         self.set_next_dest()
@@ -61,6 +63,7 @@ class Car(mesa.Agent):
         self.dest_vis = None
         self.is_waiting = False
         self.is_src = True
+        self.steps_taken = 0
 
     def check_arrival_lte_waiting(self, passenger, dest):
         passenger_arrival_constr = passenger.waiting_time + passenger.request_time
@@ -92,6 +95,8 @@ class Car(mesa.Agent):
 
 
     def move(self):
+        if self.current.x != self.next_dest.x or self.current.y != self.next_dest.y:
+            self.steps_taken += 1
         if self.current.x < self.next_dest.x:
             self.current = Location(self.current.x+1, self.current.y)
         elif self.current.x > self.next_dest.x:
@@ -100,6 +105,7 @@ class Car(mesa.Agent):
             self.current = Location(self.current.x, self.current.y+1)
         elif self.current.y > self.next_dest.y:
             self.current = Location(self.current.x, self.current.y-1)
+
 
         self.model.grid.move_agent(self, (self.current.x, self.current.y))
 

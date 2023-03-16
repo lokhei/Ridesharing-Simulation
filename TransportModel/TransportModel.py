@@ -6,6 +6,7 @@ def compute_manhattan(model):
     total_dist = 0
     for agent in model.schedule.agents:
         if type(agent) == "Car":
+            print(total_dist)
             total_dist += abs(agent.current.x - agent.next_dest.x) + abs(agent.current.y - agent.next_dest.y)
     return total_dist
 
@@ -46,7 +47,9 @@ class TransportModel(mesa.Model):
             self.grid.place_agent(a, (x, y))
 
         self.datacollector = mesa.DataCollector(
-            model_reporters={"Manhattan": compute_manhattan}, agent_reporters={}
+            model_reporters={"Manhattan": compute_manhattan},
+            agent_reporters={"Steps": lambda a: a.steps_taken if a.type == "Car" else None}
+
         )
 
     def step(self):
