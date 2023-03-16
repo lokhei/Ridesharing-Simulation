@@ -46,10 +46,14 @@ class TransportModel(mesa.Model):
             self.cars.append(a)
             self.grid.place_agent(a, (x, y))
 
+       
+
         self.datacollector = mesa.DataCollector(
             model_reporters={"Manhattan": compute_manhattan},
-            agent_reporters={"Steps": lambda a: a.steps_taken if a.type == "Car" else None}
-
+            agent_reporters={
+            "Steps": lambda a: a.steps_taken if a.type == "Car" else None,
+            "WaitingTime": lambda b: b.actual_waiting_time if b.type == "Passenger" else None
+            }
         )
 
     def step(self):

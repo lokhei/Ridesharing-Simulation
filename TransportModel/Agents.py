@@ -39,12 +39,19 @@ class Passenger(mesa.Agent):
         self.waiting_time = self.random.randrange(5,20)
         self.request_time = step
 
+        # for metrics
+        self.actual_waiting_time = -1
+
     def step(self):
         # passenger leaves if past waiting time
         if self.pos and self.model.schedule.steps > self.request_time + self.waiting_time:
             self.model.schedule.remove(self)
             self.model.grid.remove_agent(self)
             print(f"Waited too long - passenger {self.unique_id} has left")
+
+        if self.actual_waiting_time != -1:
+            self.model.schedule.remove(self)
+
 
 
 
@@ -63,7 +70,7 @@ class Car(mesa.Agent):
         self.dest_vis = None
         self.is_waiting = False
         self.is_src = True
-        self.steps_taken = 0
+        self.steps_taken = -1
 
     def check_arrival_lte_waiting(self, passenger, dest):
         passenger_arrival_constr = passenger.waiting_time + passenger.request_time
@@ -105,7 +112,6 @@ class Car(mesa.Agent):
             self.current = Location(self.current.x, self.current.y+1)
         elif self.current.y > self.next_dest.y:
             self.current = Location(self.current.x, self.current.y-1)
-
 
         self.model.grid.move_agent(self, (self.current.x, self.current.y))
 
@@ -153,6 +159,10 @@ class Car(mesa.Agent):
             self.dest_vis = destVis(self.model.next_id(), self)
             self.model.grid.place_agent(self.dest_vis, (self.next_dest.x, self.next_dest.y))
             self.is_src = False
+            # metrics
+            passenger.actual_waiting_time = self.model.schedule.steps - passenger.request_time
+            print("WAIT: ", passenger.actual_waiting_time)
+
         else:
             self.set_next_dest()
             
