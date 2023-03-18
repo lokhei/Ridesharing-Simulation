@@ -28,17 +28,13 @@ class destVis(mesa.Agent):
 class Passenger(mesa.Agent):
     """An agent with starting location and target destination"""
 
-    def __init__(self, unique_id, model, grid_width, grid_height, x, y, step, num_people = 1):
+    def __init__(self, unique_id, model, grid_width, grid_height, x, y, step, seed, num_people = 1):
         super().__init__(unique_id, model)
         self.type = "Passenger"
         self.src = Location(x, y)
-        seed1 = random.Random(7)
-        seed2 = random.Random(8)
-        seed3 = random.Random(9)
-        seed4 = random.Random(10)
-        self.dest = Location(seed1.randrange(grid_width),seed2.randrange(grid_height))
+        self.dest = Location(seed.randrange(grid_width),seed.randrange(grid_height))
         while self.src == self.dest:
-            self.dest = Location(seed3.randrange(grid_width),seed4.randrange(grid_height))
+            self.dest = Location(seed.randrange(grid_width),seed.randrange(grid_height))
         self.num_people = num_people
         print(f"Agent {unique_id}: {self.src} to {self.dest}")
         self.waiting_time = None # self.random.randrange(5,20)
@@ -129,7 +125,6 @@ class Car(mesa.Agent):
         self.model.grid.move_agent(self, (self.current.x, self.current.y))
 
         # if on the way to passenger pass drop off point, drop off passenger
-
         if self.multi_pass and (self.current.x != self.next_dest.x or self.current.y != self.next_dest.y):
             self.pickup_passenger(pass_thru=True)
 
@@ -172,8 +167,8 @@ class Car(mesa.Agent):
     def pickup_passenger(self, pass_thru=False):
         this_cell = self.model.grid.get_cell_list_contents([self.pos])
         potential_passengers = [obj for obj in this_cell if isinstance(obj, Passenger)]
-        # TO DO: if more than 1 passenger, pick up all
-        if len(potential_passengers) > 0 and sum(client.num_people for client in potential_passengers) < self.max_passengers:
+
+        while len(potential_passengers) > 0 and sum(client.num_people for client in potential_passengers) + len(self.passengers) < self.max_passengers:
             passenger = potential_passengers[0]
             self.model.grid.remove_agent(passenger)
             self.passengers.append(passenger)
@@ -185,19 +180,22 @@ class Car(mesa.Agent):
                 self.is_src = False
                 dest_v = destVis(self.model.next_id(), self)
                 self.dest_vis.append(dest_v)
-                self.model.grid.place_agent(dest_v, (self.next_dest.x, self.next_dest.y))
+                print(dest_v, self.next_dest.x, self.next_dest.y)
+                self.model.grid.place_agent(dest_v, (passenger.dest.x, passenger.dest.y))
             else:
                 # pick up passengers along the way
                 dest_v = destVis(self.model.next_id(), self)
                 self.dest_vis.append(dest_v)
+                print(dest_v,passenger.dest.x, passenger.dest.y)
+
                 self.model.grid.place_agent(dest_v, (passenger.dest.x, passenger.dest.y))
             
+            potential_passengers.pop(0)
 
             # metrics
             passenger.actual_waiting_time = self.model.schedule.steps - passenger.request_time
 
-        elif not pass_thru:
-            self.set_next_dest()
+       
             
 
     def get_dest_index(self):

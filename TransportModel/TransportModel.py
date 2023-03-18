@@ -24,18 +24,15 @@ class TransportModel(mesa.Model):
         self.running = True
         self.clients = []
         self.cars = []
-        self.seed5 = random.Random(5)
-        self.seed6 = random.Random(6)
+        self.seed = random.Random(127)
 
 
         # Create passenger agents
-        seed1 = random.Random(1)
-        seed2 = random.Random(2)
         for i in range(self.num_passengers):
             # Add the agent to a random grid cell
-            x = seed1.randrange(self.grid.width)
-            y = seed2.randrange(self.grid.height)
-            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y, self.schedule.steps)
+            x = self.seed.randrange(self.grid.width)
+            y = self.seed.randrange(self.grid.height)
+            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y, self.schedule.steps, self.seed)
             self.schedule.add(a)
 
             self.clients.append(a)
@@ -43,12 +40,10 @@ class TransportModel(mesa.Model):
 
         # Create car agents
         # 1 for now
-        seed3 = random.Random(3)
-        seed4 = random.Random(4)
         for i in range(self.num_cars):
             # Add the agent to a random grid cell
-            x = seed3.randrange(self.grid.width)
-            y = seed4.randrange(self.grid.height)
+            x = self.seed.randrange(self.grid.width)
+            y = self.seed.randrange(self.grid.height)
             a = Car(self.next_id(), self, x, y, step_type=StepType.CLOSEST)
             self.schedule.add(a)
             self.cars.append(a)
@@ -70,9 +65,9 @@ class TransportModel(mesa.Model):
         # TO DO: only create new agent is current number of clients waiting < 5 
         if (self.schedule.steps % 10 == 0):
             # Create new passenger agent
-            x = self.seed5.randrange(self.grid.width)
-            y = self.seed6.randrange(self.grid.height)
-            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y, self.schedule.steps)
+            x = self.seed.randrange(self.grid.width)
+            y = self.seed.randrange(self.grid.height)
+            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y, self.schedule.steps, self.seed)
             self.schedule.add(a)
             self.clients.append(a)
             self.grid.place_agent(a, (x, y))
