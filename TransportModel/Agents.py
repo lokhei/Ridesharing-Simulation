@@ -1,5 +1,4 @@
 import mesa
-import random
 
 from dataclasses import dataclass
 from enum import Enum
@@ -20,7 +19,7 @@ class StepType(Enum):
     WAITING = 3
 
 
-class destVis(mesa.Agent):
+class DestVis(mesa.Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
 
@@ -49,7 +48,6 @@ class Passenger(mesa.Agent):
             self.model.schedule.remove(self)
             self.model.grid.remove_agent(self)
             print(f"Waited too long - passenger {self.unique_id} has left")
-
 
         # remove from schedule once picked up
         if self.actual_waiting_time != -1:
@@ -124,9 +122,10 @@ class Car(mesa.Agent):
 
         self.model.grid.move_agent(self, (self.current.x, self.current.y))
 
-        # if on the way to passenger pass drop off point, drop off passenger
+        # pickup and drop off passengers enroute
         if self.multi_pass and (self.current.x != self.next_dest.x or self.current.y != self.next_dest.y):
             self.pickup_passenger(pass_thru=True)
+            self.drop_off_passengers(pass_thru=True)
 
        
         
@@ -178,16 +177,13 @@ class Car(mesa.Agent):
                 index = self.get_dest_index() if self.dest_vis else 0
                 self.next_dest = self.passengers[index].dest
                 self.is_src = False
-                dest_v = destVis(self.model.next_id(), self)
+                dest_v = DestVis(self.model.next_id(), self)
                 self.dest_vis.append(dest_v)
-                print(dest_v, self.next_dest.x, self.next_dest.y)
                 self.model.grid.place_agent(dest_v, (passenger.dest.x, passenger.dest.y))
             else:
                 # pick up passengers along the way
-                dest_v = destVis(self.model.next_id(), self)
+                dest_v = DestVis(self.model.next_id(), self)
                 self.dest_vis.append(dest_v)
-                print(dest_v,passenger.dest.x, passenger.dest.y)
-
                 self.model.grid.place_agent(dest_v, (passenger.dest.x, passenger.dest.y))
             
             potential_passengers.pop(0)
@@ -213,6 +209,39 @@ class Car(mesa.Agent):
 
 
 
+    def drop_off_passengers(self, pass_thru=False):
+        if not pass_thru:
+            del_pass = self.passengers.pop(self.next_dest_index)
+            self.model.grid.remove_agent(self.dest_vis[self.next_dest_index])
+            self.dest_vis.pop(self.next_dest_index)
+            self.model.clients.remove(del_pass)
+            if self.passengers:
+                # choose next dest which is closest
+                self.next_dest_index = self.get_dest_index()
+                self.next_dest = self.passengers[self.next_dest_index].dest
+            elif self.model.clients:
+                self.set_next_dest()
+                self.is_src = True
+            else:
+                self.is_waiting = True
+            return
+        else:
+            this_cell = self.model.grid.get_cell_list_contents([self.pos])
+            drop_offs = [obj for obj in this_cell if isinstance(obj, DestVis)]
+
+            while len(drop_offs) > 0:
+                index = 0
+                for i, passenger in enumerate(self.passengers):
+                    if passenger.dest == self.pos:
+                        index = i
+                del_pass = self.passengers.pop(index)
+                self.model.grid.remove_agent(self.dest_vis[index])
+                self.dest_vis.pop(index)
+                self.model.clients.remove(del_pass)
+                drop_offs.pop(0)
+
+
+
     def step_algo(self):
         # if at destination point
         if self.current.x == self.next_dest.x and self.current.y == self.next_dest.y:            
@@ -221,19 +250,7 @@ class Car(mesa.Agent):
                 self.pickup_passenger()
                 
             elif not self.is_waiting:
-                del_pass = self.passengers.pop(self.next_dest_index)
-                self.model.grid.remove_agent(self.dest_vis[self.next_dest_index])
-                self.dest_vis.pop(self.next_dest_index)
-                self.model.clients.remove(del_pass)
-                if self.passengers:
-                    # choose next dest which is closest
-                    self.next_dest_index = self.get_dest_index()
-                    self.next_dest = self.passengers[self.next_dest_index].dest
-                elif self.model.clients:
-                    self.set_next_dest()
-                    self.is_src = True
-                else:
-                    self.is_waiting = True
+                self.drop_off_passengers()
                 
             if self.is_waiting:
                 print("Waiting for new client")
