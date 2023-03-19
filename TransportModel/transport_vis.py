@@ -28,7 +28,7 @@ grid = mesa.visualization.CanvasGrid(agent_portrayal,10,10,500,500)
 
 # configure and run the server
 server = mesa.visualization.ModularServer(
-    TransportModel, [grid], 'Transport Model', {'num_passengers' : 2, 'num_cars': 1, 'width' : 10, 'height' : 10}
+    TransportModel, [grid], 'Transport Model', {'num_passengers' : 2, 'num_cars': 2, 'width' : 10, 'height' : 10}
 )
 
 server.port = 8521 # default

@@ -39,7 +39,6 @@ class TransportModel(mesa.Model):
             self.grid.place_agent(a, (x, y))
 
         # Create car agents
-        # 1 for now
         for i in range(self.num_cars):
             # Add the agent to a random grid cell
             x = self.seed.randrange(self.grid.width)
@@ -63,7 +62,7 @@ class TransportModel(mesa.Model):
         self.datacollector.collect(self)
         self.schedule.step()
         # TO DO: only create new agent is current number of clients waiting < 5 
-        if (self.schedule.steps % 10 == 0):
+        if (self.schedule.steps % 5 == 0):
             # Create new passenger agent
             x = self.seed.randrange(self.grid.width)
             y = self.seed.randrange(self.grid.height)

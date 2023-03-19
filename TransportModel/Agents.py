@@ -63,6 +63,7 @@ class Car(mesa.Agent):
         self.type = "Car"
         self.step_type = step_type
         self.current =  Location(x, y)
+        self.current_passenger = None
         self.set_next_dest()
         self.passengers = []
         self.max_passengers = max_passengers
@@ -88,6 +89,7 @@ class Car(mesa.Agent):
         if self.model.clients:
             if self.step_type == StepType.QUEUE:
                 passenger = self.model.clients[0]
+                self.model.clients.pop(0)
             elif self.step_type == StepType.CLOSEST:
                 passenger = self.find_closest()
             elif self.step_type == StepType.WAITING:
@@ -98,6 +100,7 @@ class Car(mesa.Agent):
                 self.model.clients.remove(passenger)
                 self.set_next_dest()
             else:
+                self.current_passenger = passenger
                 self.next_dest = passenger.src
                 self.is_waiting = False
                 self.is_src = True
@@ -125,7 +128,7 @@ class Car(mesa.Agent):
         # pickup and drop off passengers enroute
         if self.multi_pass and (self.current.x != self.next_dest.x or self.current.y != self.next_dest.y):
             self.pickup_passenger(pass_thru=True)
-            self.drop_off_passengers(pass_thru=True)
+            # self.drop_off_passengers(pass_thru=True)
 
        
         
@@ -147,7 +150,7 @@ class Car(mesa.Agent):
             if min_distance > curr_dist:
                 min_distance = curr_dist
                 closest = p_dests
-
+        self.model.clients.remove(closest)
         return closest
     
     def find_closest_waiting(self):
@@ -158,7 +161,7 @@ class Car(mesa.Agent):
             if min_waiting > curr_wait:
                 min_waiting = curr_wait
                 most_urgent = passenger
-
+        self.model.clients.remove(most_urgent)
         return most_urgent
     
 
@@ -169,6 +172,18 @@ class Car(mesa.Agent):
 
         while len(potential_passengers) > 0 and sum(client.num_people for client in potential_passengers) + len(self.passengers) < self.max_passengers:
             passenger = potential_passengers[0]
+            potential_passengers.pop(0)
+
+            if pass_thru and passenger not in self.model.clients: # other cars already dealing with passenger
+                continue
+
+            if not pass_thru and self.current_passenger != passenger:
+                if passenger not in self.model.clients:
+                    continue
+                else:
+                    self.model.clients.remove(passenger)
+
+
             self.model.grid.remove_agent(passenger)
             self.passengers.append(passenger)
             print("NUM PASSENGERS: ", len(self.passengers))
@@ -182,11 +197,11 @@ class Car(mesa.Agent):
                 self.model.grid.place_agent(dest_v, (passenger.dest.x, passenger.dest.y))
             else:
                 # pick up passengers along the way
+                self.model.clients.remove(passenger)
                 dest_v = DestVis(self.model.next_id(), self)
                 self.dest_vis.append(dest_v)
                 self.model.grid.place_agent(dest_v, (passenger.dest.x, passenger.dest.y))
             
-            potential_passengers.pop(0)
 
             # metrics
             passenger.actual_waiting_time = self.model.schedule.steps - passenger.request_time
@@ -211,10 +226,9 @@ class Car(mesa.Agent):
 
     def drop_off_passengers(self, pass_thru=False):
         if not pass_thru:
-            del_pass = self.passengers.pop(self.next_dest_index)
+            self.passengers.pop(self.next_dest_index)
             self.model.grid.remove_agent(self.dest_vis[self.next_dest_index])
             self.dest_vis.pop(self.next_dest_index)
-            self.model.clients.remove(del_pass)
             if self.passengers:
                 # choose next dest which is closest
                 self.next_dest_index = self.get_dest_index()
@@ -234,10 +248,9 @@ class Car(mesa.Agent):
                 for i, passenger in enumerate(self.passengers):
                     if passenger.dest == self.pos:
                         index = i
-                del_pass = self.passengers.pop(index)
+                self.passengers.pop(index)
                 self.model.grid.remove_agent(self.dest_vis[index])
                 self.dest_vis.pop(index)
-                self.model.clients.remove(del_pass)
                 drop_offs.pop(0)
 
 
