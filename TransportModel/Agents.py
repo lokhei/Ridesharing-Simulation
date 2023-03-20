@@ -122,13 +122,15 @@ class Car(mesa.Agent):
             self.current = Location(self.current.x, self.current.y+1)
         elif self.current.y > self.next_dest.y:
             self.current = Location(self.current.x, self.current.y-1)
+        else:
+            return
 
         self.model.grid.move_agent(self, (self.current.x, self.current.y))
 
         # pickup and drop off passengers enroute
         if self.multi_pass and (self.current.x != self.next_dest.x or self.current.y != self.next_dest.y):
             self.pickup_passenger(pass_thru=True)
-            # self.drop_off_passengers(pass_thru=True)
+            self.drop_off_passengers(pass_thru=True)
 
        
         
@@ -244,14 +246,16 @@ class Car(mesa.Agent):
             drop_offs = [obj for obj in this_cell if isinstance(obj, DestVis)]
 
             while len(drop_offs) > 0:
-                index = 0
+                index = -1
+                drop_offs.pop(0)
                 for i, passenger in enumerate(self.passengers):
                     if passenger.dest == self.pos:
                         index = i
+                if index == -1:
+                    continue
                 self.passengers.pop(index)
                 self.model.grid.remove_agent(self.dest_vis[index])
                 self.dest_vis.pop(index)
-                drop_offs.pop(0)
 
 
 
