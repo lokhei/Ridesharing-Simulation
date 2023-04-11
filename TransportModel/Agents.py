@@ -65,12 +65,12 @@ class Car(mesa.Agent):
         self.current =  Location(x, y)
         self.current_passenger = None
         self.next_dest = None
+        self.is_waiting = False
         self.set_next_dest()
         self.passengers = []
         self.max_passengers = max_passengers
         self.model = model
         self.dest_vis = []
-        self.is_waiting = False
         self.is_src = True
         self.multi_pass = multi_pass # ridehailing or ridesharing? 
         self.next_dest_index = 0
@@ -98,7 +98,6 @@ class Car(mesa.Agent):
 
             # skip passenger if not able to reach passenger location in time
             if passenger.waiting_time and not self.check_arrival_lte_waiting(passenger, passenger.src):
-                print("AA")
                 self.set_next_dest()
             else:
                 self.current_passenger = passenger
@@ -116,7 +115,6 @@ class Car(mesa.Agent):
         prospectives = self.find_prospectives()
         for client in prospectives:
             if self.current.x == client.dest.x:
-
                 targets.append(client)
             elif self.current.y == client.dest.y:
                 targets.append(client)
@@ -171,7 +169,8 @@ class Car(mesa.Agent):
     def step(self):
         if self.is_waiting and self.model.clients:
             self.set_next_dest()
-        self.step_algo()
+        if not self.is_waiting:
+            self.step_algo()
 
 
     def calc_manhattan(self, src, dest):
@@ -296,7 +295,6 @@ class Car(mesa.Agent):
     def step_algo(self):
         # if at destination point
 
-        print("NEXT", self.next_dest)
         if self.current.x == self.next_dest.x and self.current.y == self.next_dest.y:            
             print("Destination Reached")
             if self.is_src:
@@ -307,7 +305,7 @@ class Car(mesa.Agent):
                 
             if self.is_waiting:
                 print("Waiting for new client")
-        
+
         if not self.is_waiting:
             self.move()
 
