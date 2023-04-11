@@ -1,6 +1,8 @@
 import mesa
 from mesa.visualization.modules import CanvasGrid, ChartModule
 from TransportModel import TransportModel, Car, Passenger
+from Agents import StepType
+
 
 def agent_portrayal(agent):
     portrayal = {
@@ -28,9 +30,9 @@ grid = mesa.visualization.CanvasGrid(agent_portrayal,10,10,500,500)
 
 # configure and run the server
 server = mesa.visualization.ModularServer(
-    TransportModel, [grid], 'Transport Model', {'num_passengers' : 2, 'num_cars': 2, 'width' : 10, 'height' : 10}
+    TransportModel, [grid], 'Transport Model', {'num_cars': 2, 'width' : 10, 'height' : 10, 'multi_pass' : False, 'seed_int': 127, 'strategy' : StepType.CLOSEST}
 )
 
 server.port = 8521 # default
 server.launch()
-
+    
