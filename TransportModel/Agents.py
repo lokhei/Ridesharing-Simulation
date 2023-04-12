@@ -22,6 +22,8 @@ class StepType(Enum):
 class DestVis(mesa.Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
+        self.type = "dest_vis"
+
 
 
 class Passenger(mesa.Agent):
@@ -37,7 +39,9 @@ class Passenger(mesa.Agent):
         self.num_people = num_people
         print(f"Agent {unique_id}: {self.src} to {self.dest}")
         self.waiting_time =  self.random.randrange(5,20) # follow normal distribution instead??
-        self.request_time = step
+        self.request_time = step#
+
+        self.remove = False
 
         # for metrics
         self.actual_waiting_time = -1
@@ -49,9 +53,16 @@ class Passenger(mesa.Agent):
             self.model.grid.remove_agent(self)
             print(f"Waited too long - passenger {self.unique_id} has left")
 
+
+
+        # remove next cycle
+        if self.remove:
+            self.model.schedule.remove(self)
+
         # remove from schedule once picked up
         if self.actual_waiting_time != -1:
-            self.model.schedule.remove(self)
+            self.remove = True
+            
 
 
 
@@ -296,7 +307,7 @@ class Car(mesa.Agent):
         # if at destination point
 
         if self.current.x == self.next_dest.x and self.current.y == self.next_dest.y:            
-            print("Destination Reached")
+            print("Destination Reached", self.current)
             if self.is_src:
                 self.pickup_passenger()
                 

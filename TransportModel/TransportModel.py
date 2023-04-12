@@ -59,6 +59,7 @@ class TransportModel(mesa.Model):
 
     def step(self):
         self.datacollector.collect(self)
+        
         self.schedule.step()
         if (self.schedule.steps % 5 == 0):
             # Create new passenger agent
@@ -68,7 +69,7 @@ class TransportModel(mesa.Model):
             self.schedule.add(a)
             self.clients.append(a)
             self.grid.place_agent(a, (x, y))
-
+      
 
 
         
