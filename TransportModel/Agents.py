@@ -38,13 +38,15 @@ class Passenger(mesa.Agent):
             self.dest = Location(seed.randrange(grid_width),seed.randrange(grid_height))
         self.num_people = num_people
         print(f"Agent {unique_id}: {self.src} to {self.dest}")
-        self.waiting_time =  self.random.randrange(5,20) # follow normal distribution instead??
-        self.request_time = step#
+        self.waiting_time =  self.random.randrange(10,40) # follow normal distribution instead??
 
         self.remove = False
 
         # for metrics
-        self.actual_waiting_time = -1
+        self.request_time = step
+        self.pickup_time = -1
+        self.dropoff_time = -1
+
 
     def step(self):
         # passenger leaves if past waiting time
@@ -60,8 +62,9 @@ class Passenger(mesa.Agent):
             self.model.schedule.remove(self)
 
         # remove from schedule once picked up
-        if self.actual_waiting_time != -1:
+        if self.dropoff_time != -1:
             self.remove = True
+            print(self.dropoff_time)
             
 
 
@@ -89,6 +92,7 @@ class Car(mesa.Agent):
 
         # metrics
         self.steps_taken = -1
+        self.idle_time = 0
         
 
     def check_arrival_lte_waiting(self, passenger, dest):
@@ -182,6 +186,8 @@ class Car(mesa.Agent):
             self.set_next_dest()
         if not self.is_waiting:
             self.step_algo()
+        else:
+            self.idle_time += 1
 
 
     def calc_manhattan(self, src, dest):
@@ -250,7 +256,7 @@ class Car(mesa.Agent):
             
 
             # metrics
-            passenger.actual_waiting_time = self.model.schedule.steps - passenger.request_time
+            passenger.pickup_time = self.model.schedule.steps
 
        
             
@@ -272,9 +278,12 @@ class Car(mesa.Agent):
 
     def drop_off_passengers(self, pass_thru=False):
         if not pass_thru:
-            self.passengers.pop(self.next_dest_index)
+            passenger = self.passengers.pop(self.next_dest_index)
             self.model.grid.remove_agent(self.dest_vis[self.next_dest_index])
             self.dest_vis.pop(self.next_dest_index)
+            
+            passenger.dropoff_time = self.model.schedule.steps
+
             if self.passengers:
                 # choose next dest which is closest
                 self.next_dest_index = self.get_dest_index()
@@ -297,7 +306,9 @@ class Car(mesa.Agent):
                         index = i
                 if index == -1:
                     continue
-                self.passengers.pop(index)
+                passenger = self.passengers.pop(index)
+                passenger.dropoff_time = self.model.schedule.steps
+
                 self.model.grid.remove_agent(self.dest_vis[index])
                 self.dest_vis.pop(index)
 

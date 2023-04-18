@@ -53,7 +53,10 @@ class TransportModel(mesa.Model):
             model_reporters={"Manhattan": compute_manhattan},
             agent_reporters={
             "Steps": lambda a: a.steps_taken if a.type == "Car" else None,
-            "WaitingTime": lambda b: b.actual_waiting_time if b.type == "Passenger" else None
+            "IdleTime": lambda b: b.idle_time if b.type == "Car" else None,
+            "request_time": lambda b: b.request_time if b.type == "Passenger" else None,
+            "pickup_time": lambda b: b.pickup_time if b.type == "Passenger" else None,
+            "dropoff_time": lambda b: b.dropoff_time if b.type == "Passenger" else None,
             }
         )
 
