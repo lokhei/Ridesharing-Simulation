@@ -46,6 +46,7 @@ class Passenger(mesa.Agent):
         self.request_time = step
         self.pickup_time = -1
         self.dropoff_time = -1
+        self.latest_arrival_time = self.request_time + self.waiting_time
 
 
     def step(self):
@@ -55,8 +56,6 @@ class Passenger(mesa.Agent):
             self.model.grid.remove_agent(self)
             print(f"Waited too long - passenger {self.unique_id} has left")
 
-
-
         # remove next cycle
         if self.remove:
             self.model.schedule.remove(self)
@@ -64,7 +63,6 @@ class Passenger(mesa.Agent):
         # remove from schedule once picked up
         if self.dropoff_time != -1:
             self.remove = True
-            print(self.dropoff_time)
             
 
 
@@ -78,8 +76,8 @@ class Car(mesa.Agent):
         self.step_type = step_type
         self.current =  Location(x, y)
         self.current_passenger = None
-        self.next_dest = None
         self.is_waiting = False
+        self.current_routes = [] # list of target destinations based on passengers in car and target passenger
         self.set_next_dest()
         self.passengers = []
         self.max_passengers = max_passengers
@@ -88,7 +86,6 @@ class Car(mesa.Agent):
         self.is_src = True
         self.multi_pass = multi_pass # ridehailing or ridesharing? 
         self.next_dest_index = 0
-
 
         # metrics
         self.steps_taken = -1
@@ -109,14 +106,14 @@ class Car(mesa.Agent):
                 passenger = self.model.clients[0]
                 self.model.clients.pop(0)
             else:
-                passenger = self.find_closest()
+                passenger = self.find_closest(self.current)
 
             # skip passenger if not able to reach passenger location in time
             if passenger.waiting_time and not self.check_arrival_lte_waiting(passenger, passenger.src):
                 self.set_next_dest()
             else:
                 self.current_passenger = passenger
-                self.next_dest = passenger.src
+                self.current_routes.extend([passenger.src, passenger.dest])
                 self.is_waiting = False
                 self.is_src = True
 
@@ -124,50 +121,51 @@ class Car(mesa.Agent):
             self.is_waiting = True
 
 
-    def find_targets(self, detour_lim = 0):
-        targets = []
-        detour = 0
-        prospectives = self.find_prospectives()
-        for client in prospectives:
-            if self.current.x == client.dest.x:
-                targets.append(client)
-            elif self.current.y == client.dest.y:
-                targets.append(client)
-        return targets
+    # def find_targets(self, detour_lim = 0):
+    #     targets = []
+    #     detour = 0
+    #     prospectives = self.find_prospectives()
+    #     for client in prospectives:
+    #         if self.current.x == client.dest.x:
+    #             targets.append(client)
+    #         elif self.current.y == client.dest.y:
+    #             targets.append(client)
+    #     return targets
 
 
         
-    def find_prospectives(self):
-        # find prospective passengers which are enroute to next dest
-        prospectives = []
-        for client in self.model.clients:
-            # if between current and dest
-            if ((client.dest.x <= self.current.x and client.dest.x >= self.next_dest.x) \
-                or (client.dest.x <= self.current.x and client.dest.x >= self.next_dest.x)) \
-                    and ((client.dest.y <= self.current.y and client.dest.y >= self.next_dest.y) \
-                or (client.dest.y <= self.current.y and client.dest.y >= self.next_dest.y)):
+    # def find_prospectives(self):
+    #     # find prospective passengers which are enroute to next dest
+    #     prospectives = []
+    #     for client in self.model.clients:
+    #         # if between current and dest
+    #         if ((client.dest.x <= self.current.x and client.dest.x >= self.next_dest.x) \
+    #             or (client.dest.x <= self.current.x and client.dest.x >= self.next_dest.x)) \
+    #                 and ((client.dest.y <= self.current.y and client.dest.y >= self.next_dest.y) \
+    #             or (client.dest.y <= self.current.y and client.dest.y >= self.next_dest.y)):
 
-                prospectives.append(client)
+    #             prospectives.append(client)
 
-        for p in prospectives:
-            print(p.dest)
+    #     for p in prospectives:
+    #         print(p.dest)
 
-        return prospectives
+    #     return prospectives
     
                 
 
 
     def move(self):
-        if self.current.x != self.next_dest.x or self.current.y != self.next_dest.y:
+        target = self.current_routes[0]
+        if self.current.x != target.x or self.current.y != target.y:
             self.steps_taken += 1
 
-        if self.current.x < self.next_dest.x:
+        if self.current.x < target.x:
             self.current = Location(self.current.x+1, self.current.y)
-        elif self.current.x > self.next_dest.x:
+        elif self.current.x > target.x:
             self.current = Location(self.current.x-1, self.current.y)
-        elif self.current.y < self.next_dest.y:
+        elif self.current.y < target.y:
             self.current = Location(self.current.x, self.current.y+1)
-        elif self.current.y > self.next_dest.y:
+        elif self.current.y > target.y:
             self.current = Location(self.current.x, self.current.y-1)
         else:
             return
@@ -175,10 +173,8 @@ class Car(mesa.Agent):
         self.model.grid.move_agent(self, (self.current.x, self.current.y))
 
         # pickup and drop off passengers enroute
-        if self.multi_pass and (self.current.x != self.next_dest.x or self.current.y != self.next_dest.y):
+        if self.multi_pass and (self.current.x != target.x or self.current.y != target.y):
             self.pickup_passenger(pass_thru=True)
-            self.drop_off_passengers(pass_thru=True)
-        # self.find_passengers()
        
         
     def step(self):
@@ -194,11 +190,11 @@ class Car(mesa.Agent):
         return abs(src.x - dest.x) + abs(src.y - dest.y)
         
 
-    def find_closest(self):
+    def find_closest(self, from_loc):
         closest = self.model.clients[0]
-        min_distance = self.calc_manhattan(self.model.clients[0].src, self.current)
+        min_distance = self.calc_manhattan(self.model.clients[0].src, from_loc)
         for p_dests in self.model.clients:
-            curr_dist = self.calc_manhattan(p_dests.src, self.current)
+            curr_dist = self.calc_manhattan(p_dests.src, from_loc)
             if min_distance > curr_dist:
                 min_distance = curr_dist
                 closest = p_dests
@@ -217,8 +213,70 @@ class Car(mesa.Agent):
         return most_urgent
     
 
+    def get_closest_from_list(self, list, from_loc):
+        closest = list[0]
+        min_distance = self.calc_manhattan(list, from_loc)
+        for p_dests in list:
+            curr_dist = self.calc_manhattan(p_dests.src, from_loc)
+            if min_distance > curr_dist:
+                min_distance = curr_dist
+                closest = p_dests
+        return closest
+    
+
+
+    def is_enroute(self, from_loc, to, between):
+        if from_loc.x <= between.x and between.x <= to.x or from_loc.x >= between.x and between.x >= to.x:
+            if from_loc.y <= between.y and between.y <= to.y or from_loc.y >= between.y and between.y >= to.y:
+                return True
+            
+        return False
+
+
+    def get_routes(self, to_add):
+        # add passenger to route and calculate total distance
+        # see if will exceed any of the passenger max arrival time
+
+        # while passengers not empty, find closest, add 
+        entries = []
+        dests = []
+        from_loc = self.current
+        while entries:
+            closest = self.get_closest_from_list(entries, from_loc)
+            from_loc = closest
+            entries.remove(closest)
+            dests.append(closest)
+        return True
+
+
+
+    def order_locations(self, passenger):
+
+        distance = 0
+        for i in range(len(self.current_routes)-1):
+            if self.is_enroute(self.current_routes[i], self.current_routes[i+1], passenger.dest): # if drop off enroute, arrival time for other passengers don't change
+                # check latest arival time satisfied
+                if passenger.latest_arrival_time >= distance:
+                    self.current_routes.insert(i+1, passenger.dest)
+                    return True
+
+            else:
+                distance += self.calc_manhattan(self.current_routes[i], self.current_routes[i+1])
+
+        # check if adding passenger to end of list satisfises passenger
+        if passenger.latest_arrival_time >= distance:
+            self.current_routes.append(passenger.dest)
+            return True
+ 
+        
+        # TO DO: figure out where to add passenger otherwise detour a little and add passenger
+
+        return False
+
+
 
     def pickup_passenger(self, pass_thru=False):
+        # get passengers on current cell
         this_cell = self.model.grid.get_cell_list_contents([self.pos])
         potential_passengers = [obj for obj in this_cell if isinstance(obj, Passenger)]
 
@@ -226,23 +284,34 @@ class Car(mesa.Agent):
             passenger = potential_passengers[0]
             potential_passengers.pop(0)
 
-            if pass_thru and passenger not in self.model.clients: # other cars already dealing with passenger
+            if pass_thru and passenger not in self.model.clients: # other cars already dealing with enroute passenger
                 continue
 
-            if not pass_thru and self.current_passenger != passenger:
-                if passenger not in self.model.clients:
-                    continue
-                else:
-                    self.model.clients.remove(passenger)
+            if not pass_thru and self.current_passenger != passenger and passenger not in self.model.clients:
+                # if another passenger on same cell as targeted passenger and already taken by another car
+                continue
+
+            add_passenger = None
+            if self.current_passenger != passenger:
+                add_passenger = self.order_locations(passenger)
+
+            if add_passenger is False: # if dest not en-route, don't pick up
+                continue
+
+
+            if not pass_thru and self.current_passenger != passenger and passenger in self.model.clients:
+                # if another passenger on same cell as targeted passenger not taken yet
+                self.model.clients.remove(passenger)
 
 
             self.model.grid.remove_agent(passenger)
             self.passengers.append(passenger)
-            print("NUM PASSENGERS: ", len(self.passengers))
 
             if not pass_thru:
-                index = self.get_dest_index() if self.dest_vis else 0
-                self.next_dest = self.passengers[index].dest
+                # place destination vis and set next destinations
+                if self.current in self.current_routes:
+                    self.current_routes.remove(self.current)
+
                 self.is_src = False
                 dest_v = DestVis(self.model.next_id(), self)
                 self.dest_vis.append(dest_v)
@@ -257,6 +326,10 @@ class Car(mesa.Agent):
 
             # metrics
             passenger.pickup_time = self.model.schedule.steps
+
+
+            if not self.multi_pass:
+                break
 
        
             
@@ -276,48 +349,31 @@ class Car(mesa.Agent):
 
 
 
-    def drop_off_passengers(self, pass_thru=False):
-        if not pass_thru:
-            passenger = self.passengers.pop(self.next_dest_index)
-            self.model.grid.remove_agent(self.dest_vis[self.next_dest_index])
-            self.dest_vis.pop(self.next_dest_index)
-            
-            passenger.dropoff_time = self.model.schedule.steps
+    def drop_off_passengers(self):
+        passenger = self.passengers.pop(self.next_dest_index)
+        self.model.grid.remove_agent(self.dest_vis[self.next_dest_index])
+        self.dest_vis.pop(self.next_dest_index)
 
-            if self.passengers:
-                # choose next dest which is closest
-                self.next_dest_index = self.get_dest_index()
-                self.next_dest = self.passengers[self.next_dest_index].dest
-            elif self.model.clients:
-                self.set_next_dest()
-                self.is_src = True
-            else:
-                self.is_waiting = True
-            return
+        self.current_routes.remove(self.current)
+        
+        # metrics
+        passenger.dropoff_time = self.model.schedule.steps
+
+        if self.passengers:
+            # choose next dest which is closest
+            self.next_dest_index = self.get_dest_index()
+        elif self.model.clients:
+            self.set_next_dest()
+            self.is_src = True
         else:
-            this_cell = self.model.grid.get_cell_list_contents([self.pos])
-            drop_offs = [obj for obj in this_cell if isinstance(obj, DestVis)]
-
-            while len(drop_offs) > 0:
-                index = -1
-                drop_offs.pop(0)
-                for i, passenger in enumerate(self.passengers):
-                    if passenger.dest == self.pos:
-                        index = i
-                if index == -1:
-                    continue
-                passenger = self.passengers.pop(index)
-                passenger.dropoff_time = self.model.schedule.steps
-
-                self.model.grid.remove_agent(self.dest_vis[index])
-                self.dest_vis.pop(index)
-
+            self.is_waiting = True
+       
 
 
     def step_algo(self):
-        # if at destination point
 
-        if self.current.x == self.next_dest.x and self.current.y == self.next_dest.y:            
+        # if at destination point
+        if self.current.x == self.current_routes[0].x and self.current.y == self.current_routes[0].y:            
             print("Destination Reached", self.current)
             if self.is_src:
                 self.pickup_passenger()
