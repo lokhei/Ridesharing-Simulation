@@ -25,6 +25,8 @@ class TransportModel(mesa.Model):
         self.cars = []
         self.seed = random.Random(seed_int)
 
+        print( num_cars, width, height, multi_pass, seed_int, strategy)
+
 
         # Create passenger agents
         for i in range(self.num_cars):
