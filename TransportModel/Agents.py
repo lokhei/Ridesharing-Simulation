@@ -29,7 +29,7 @@ class DestVis(mesa.Agent):
 class Passenger(mesa.Agent):
     """An agent with starting location and target destination"""
 
-    def __init__(self, unique_id, model, grid_width, grid_height, x, y, step, seed, num_people = 1):
+    def __init__(self, unique_id, model, grid_width, grid_height, x, y, step, seed, secondary_id, num_people = 1):
         super().__init__(unique_id, model)
         self.type = "Passenger"
         self.src = Location(x, y)
@@ -47,6 +47,7 @@ class Passenger(mesa.Agent):
         self.pickup_time = -1
         self.dropoff_time = -1
         self.latest_arrival_time = self.request_time + self.waiting_time
+        self.secondary_id = secondary_id
 
 
 
