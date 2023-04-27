@@ -1,6 +1,6 @@
 import mesa
 from mesa.visualization.modules import CanvasGrid, ChartModule
-from TransportModel import TransportModel, Car, Passenger
+from TransportModel import TransportModel, Driver, Passenger
 from Agents import StepType
 
 
@@ -13,7 +13,7 @@ def agent_portrayal(agent):
         "r": 0.5,
     }
 
-    if type(agent) is Car:
+    if type(agent) is Driver:
         portrayal["Shape"] = "Images\icons8-people-in-car-side-view-50.png"
        
     elif type(agent) is Passenger:
@@ -31,7 +31,7 @@ grid = mesa.visualization.CanvasGrid(agent_portrayal,10,10,500,500)
 # configure and run the server
 server = mesa.visualization.ModularServer(
     TransportModel, [grid], 'Transport Model',
-    {'num_cars': 2, 'width' : 10, 'height' : 10, 'multi_pass' : True, 'seed_int': 125, 'strategy' : StepType.QUEUE, 'total_steps': 2000}
+    {'num_drivers': 1, 'width' : 10, 'height' : 10, 'multi_pass' : True, 'seed_int': 125, 'strategy' : StepType.QUEUE, 'total_steps': 2000}
 )
 
 server.port = 8521 # default
