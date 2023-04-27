@@ -79,7 +79,7 @@ class Driver(mesa.Agent):
         self.current =  Location(x, y)
 
         self.current_routes = [] # list of target destinations based on passengers in car and target passenger and corrseponding passenger
-        self.set_next_dest()
+        self.set_next_dest(self.model.clients)
         self.passengers = [] # passengers actually in car
         self.max_passengers = max_passengers
         self.dest_vis = []
@@ -92,7 +92,7 @@ class Driver(mesa.Agent):
         
     def step(self):
         if not self.current_routes and self.model.clients:
-            self.set_next_dest()
+            self.set_next_dest(self.model.clients)
         if self.current_routes:
             self.step_algo()
         else:
@@ -132,23 +132,25 @@ class Driver(mesa.Agent):
         return most_urgent
     
 
-    def set_next_dest(self):
+    def set_next_dest(self, clients):
         # find new passengers when car has no passengers
         if self.model.clients:
+            copy_clients = clients
             if self.step_type == StepType.WAITING:
-                passenger = self.find_closest_waiting(self.model.clients)
+                passenger = self.find_closest_waiting(copy_clients)
             elif self.step_type == StepType.QUEUE:
-                passenger = self.model.clients[0]
+                passenger = copy_clients[0]
             else:
-                passenger = self.find_closest(self.current, self.model.clients)
+                passenger = self.find_closest(self.current, copy_clients)
             
-            self.model.clients.remove(passenger)
 
             # skip passenger if not able to reach passenger location in time
             if not self.check_arrival_lte_waiting(passenger):
-                self.set_next_dest()
+                copy_clients.remove(passenger)
+                self.set_next_dest(copy_clients)
             else:
                 self.current_routes = [(passenger.src, passenger), (passenger.dest, passenger)]
+                self.model.clients.remove(passenger)
                 print("next dest", passenger.unique_id)
 
 
