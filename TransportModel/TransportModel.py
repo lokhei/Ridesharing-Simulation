@@ -14,22 +14,24 @@ def compute_manhattan(model):
 class TransportModel(mesa.Model):
     """A model with some number of agents."""
 
-    def __init__(self, num_drivers, width, height, multi_pass, seed_int, strategy, total_steps=0):
+    def __init__(self, num_drivers, size, multi_pass, seed_int, strategy, waiting_time, rate, total_steps=0):
         super().__init__()
 
         self.num_drivers = num_drivers
-        self.grid = mesa.space.MultiGrid(width, height, True)
+        self.grid = mesa.space.MultiGrid(size, size, True)
         self.schedule = mesa.time.RandomActivation(self)
         self.running = True
         self.clients = []
         self.drivers = []
         self.seed = random.Random(seed_int)
+        self.waiting_time = waiting_time
 
         self.total_steps = total_steps
+        self.rate = rate
 
         secondary_id = 0
         if self.total_steps:
-            self.num_range = range(1, total_steps//5 + num_drivers + 1)
+            self.num_range = range(1, total_steps//self.rate + num_drivers + 1)
             
 
 
@@ -45,8 +47,7 @@ class TransportModel(mesa.Model):
                 num_list = list(self.num_range)
                 num_list.remove(secondary_id)
                 self.num_range = range(num_list[0], num_list[-1] + 1)
-                print(secondary_id)
-            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y, self.schedule.steps, self.seed, secondary_id)
+            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y, self.schedule.steps, self.seed, secondary_id, self.waiting_time)
             self.schedule.add(a)
 
             self.clients.append(a)
@@ -82,7 +83,7 @@ class TransportModel(mesa.Model):
         self.datacollector.collect(self)
         
         self.schedule.step()
-        if (self.schedule.steps % 5 == 0):
+        if (self.schedule.steps % self.rate == 0):
             # Create new passenger agent
             x = self.seed.randrange(self.grid.width)
             y = self.seed.randrange(self.grid.height)
@@ -94,9 +95,8 @@ class TransportModel(mesa.Model):
                 num_list = list(self.num_range)
                 num_list.remove(secondary_id)
                 self.num_range = range(num_list[0], num_list[-1] + 1)
-                print(secondary_id)
 
-            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y, self.schedule.steps, self.seed, secondary_id)
+            a = Passenger(self.next_id(), self, self.grid.width, self.grid.height, x, y, self.schedule.steps, self.seed, secondary_id, self.waiting_time)
             
             self.schedule.add(a)
             self.clients.append(a)

@@ -30,7 +30,7 @@ class DestVis(mesa.Agent):
 class Passenger(mesa.Agent):
     """An agent with starting location and target destination"""
 
-    def __init__(self, unique_id, model, grid_width, grid_height, x, y, step, seed, secondary_id, num_people = 1):
+    def __init__(self, unique_id, model, grid_width, grid_height, x, y, step, seed, secondary_id, waiting_time, num_people = 1):
         super().__init__(unique_id, model)
         self.type = "Passenger"
         self.src = Location(x, y)
@@ -39,7 +39,10 @@ class Passenger(mesa.Agent):
             self.dest = Location(seed.randrange(grid_width),seed.randrange(grid_height))
         self.num_people = num_people
         print(f"Agent {unique_id}: {self.src} to {self.dest}")
-        self.waiting_time =  self.random.randint(10,40)
+        if waiting_time:
+            self.waiting_time = self.random.randint(waiting_time,waiting_time+10)
+        else:
+            self.waiting_time = self.random.randint(10,40)
 
         self.remove = False
 
