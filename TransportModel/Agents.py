@@ -251,7 +251,26 @@ class Driver(mesa.Agent):
 
         for passenger in ordered_passengers:
             distance = 0
+
+            # see if can insert passenger src between current and OG target
+            src_index = -1
+
+            if self.is_enroute(self.current, self.current_routes[0][0], passenger.src):
+                src_index = 0
+            else:
+                for i in range(len(self.current_routes)-1):
+                    if self.is_enroute(self.current_routes[i][0], self.current_routes[i+1][0], passenger.src): 
+                        src_index = i + 1
+           
+            if src_index == -1: # src location couldn't be inserted en-route
+                continue
+
+
             added = False
+
+
+            # see if can insert passenger dest between passenger src and OG target
+
 
             # can't pick up in time, so skip
             if passenger.latest_pickup_time <  self.calc_manhattan(self.current, passenger.src) + self.model.schedule.steps: 
