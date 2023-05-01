@@ -47,6 +47,7 @@ class Passenger(mesa.Agent):
         self.remove = False
 
         # for metrics
+        self.shortest_distance =  abs(self.src.x - self.dest.x) + abs(self.src.y - self.dest.y)
         self.request_time = step
         self.pickup_time = -1
         self.dropoff_time = -1
@@ -91,6 +92,7 @@ class Driver(mesa.Agent):
         self.max_passengers = max_passengers
         self.dest_vis = []
         self.multi_pass = multi_pass # ridehailing or ridesharing? 
+        self.detour_max = 10
 
         # metrics
         self.steps_taken = -1
@@ -280,18 +282,18 @@ class Driver(mesa.Agent):
             added = False
 
             # if drop off enroute, no disruption for existing passengers
-            # if need to detour, find one such that latest arrival time satisfied, and adds least detour to car
 
             # check if enroute possible
             if self.is_enroute(passenger.src, self.current_routes[src_index][0], passenger.dest):
-                # distance += self.calc_manhattan(self.current, passenger.src)
-                # if passenger.latest_pickup_time >= distance +  self.model.schedule.steps: 
                 if passenger in self.model.clients:
                     self.model.clients.remove(passenger)
                     self.current_routes.insert(src_index, (passenger.src, passenger))
                     self.current_routes.insert(src_index+1, (passenger.dest, passenger))
                 # move on to next passenger in list
+                added= True
+
                 continue
+
 
             for i in range(src_index, len(self.current_routes)-1):
                 if self.is_enroute(self.current_routes[i][0], self.current_routes[i+1][0], passenger.dest): 
@@ -300,50 +302,82 @@ class Driver(mesa.Agent):
                         self.current_routes.insert(src_index, (passenger.src, passenger))
                         self.current_routes.insert(src_index+2, (passenger.dest, passenger))
                         # print(passenger.unique_id, self.current_routes)
-
-                   
                     added= True
                     break
 
 
-            # add to end
+            # if need to detour, find one such that latest arrival time satisfied, and adds least detour to car
             if not added and passenger in self.model.clients:
-                print(passenger.unique_id, self.current_routes)
-                self.model.clients.remove(passenger)
-                self.current_routes.insert(src_index, (passenger.src, passenger))
-                self.current_routes.append((passenger.dest, passenger))
-                print(passenger.unique_id, self.current_routes)
-
-            
-           
-            # # otherwise check if can add to end of routes
-            # if passenger.latest_pickup_time >= distance +  self.model.schedule.steps:
-            #     pending_passengers.append(passenger)
-
-            # find solution with minimum detour
-            # min_detour = 1000
-            # for i in range(len(self.current_routes)-1):
-            #     if self.is_enroute(self.current_routes[i][0], routes[i+1][0], passenger.dest): 
-                        
-            #         distance += self.calc_manhattan(routes[i][0], passenger.dest)
-            #         if passenger.latest_pickup_time >= distance + self.model.schedule.steps: 
-            #             pending_passengers.append(passenger)
-            #             added = True
-            #             break
-            #     else:
-            #         distance += self.calc_manhattan(routes[i][0], routes[i+1][0])
-
         
+                original_distance = self.calc_manhattan(passenger.src, self.current_routes[src_index][0])
+                new_dist =  self.calc_manhattan(passenger.src, passenger.dest) +  self.calc_manhattan(passenger.dest, self.current_routes[src_index][0])
+                detours = [(new_dist - original_distance, src_index)]
+                for i in range(src_index, len(self.current_routes)-1):
+                    original_distance = self.calc_manhattan(self.current_routes[i][0], self.current_routes[i+1][0])
+                    new_dist =  self.calc_manhattan(self.current_routes[i][0], passenger.dest) +  self.calc_manhattan(passenger.dest, self.current_routes[i+1][0])
+                    detours.append((new_dist - original_distance, i+1))
 
 
+                time = self.model.schedule.steps + self.calc_manhattan(self.current, self.current_routes[0][0])
+                for i in range(src_index-1):
+                    time += self.calc_manhattan(self.current_routes[i][0], self.current_routes[i+1][0])
+
+                time += self.calc_manhattan(self.current_routes[src_index-1][0], passenger.src)
+                # time goes up to passenger src
+                to_add = True
+                index= None
+
+                while detours:
+                    detour_tuple = min(detours, key=lambda x: x[0])
+
+                    detours.remove(detour_tuple)
+                    detour = detour_tuple[0]
+                    if detour > self.detour_max:
+                        break
+
+                    index = detour_tuple[1]
+                    new_time = time
+                    to_add = True
+                    if index == src_index:
+                        new_time += self.calc_manhattan(passenger.src, passenger.dest)
+                        new_time += self.calc_manhattan(passenger.dest, self.current_routes[src_index][0])
+                        if self.current_routes[src_index][1].latest_pickup_time < new_time: # constraint not satisfied, check new placing
+                            continue
+                    else:
+                        new_time += self.calc_manhattan(passenger.src, self.current_routes[src_index][0])
+                       
+
+                    for j in range(src_index, len(self.current_routes)-1):
+                        if j == index-1:
+                            new_time += self.calc_manhattan(self.current_routes[j][0], passenger.dest)
+                            new_time += self.calc_manhattan(passenger.dest, self.current_routes[j+1][0])
+                        else:
+                            new_time += self.calc_manhattan(self.current_routes[j][0], self.current_routes[j+1][0])
+                        curr_passenger = self.current_routes[j+1][1]
+                        if curr_passenger.src == self.current_routes[j+1][0]: # if src, check constraints
+                            if curr_passenger.latest_pickup_time < new_time: # constraint not satisfied, check new placing
+                                to_add = False
+                                break
+                    
+                    if to_add:
+                        break
+                if to_add and index is not None:
+                    self.model.clients.remove(passenger)
+                    self.current_routes.insert(src_index, (passenger.src, passenger))
+                    self.current_routes.insert(index+1, (passenger.dest, passenger))
+
+              
 
 
-    
 
     def pickup_passenger(self):
         this_cell = self.model.grid.get_cell_list_contents([self.pos])
         potential_passengers = [obj for obj in this_cell if isinstance(obj, Passenger)]
-        # print(this_cell, potential_passengers)
+
+        if not potential_passengers:
+            self.current_routes.pop(0)
+
+
 
         while len(potential_passengers) > 0 and len(self.passengers) < self.max_passengers:
             passenger = potential_passengers[0]
@@ -398,6 +432,9 @@ class Driver(mesa.Agent):
                 pass_index = i
                 break
 
+        if pass_index == None:
+            return
+
         passenger = self.passengers.pop(pass_index)
         self.model.grid.remove_agent(self.dest_vis[pass_index]) # remove dest from grid
         self.dest_vis.pop(pass_index)
@@ -417,10 +454,7 @@ class Driver(mesa.Agent):
 
             elif self.current_routes[0][1].src == self.current_routes[0][0]:
                 self.pickup_passenger()
-                
-                
-            if not self.current_routes:
-                print("Waiting for new client")
+            break
 
         if self.current_routes:
             self.move()
