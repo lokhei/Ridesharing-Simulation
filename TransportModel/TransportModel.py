@@ -18,7 +18,7 @@ class TransportModel(mesa.Model):
         super().__init__()
 
         self.num_drivers = num_drivers
-        self.grid = mesa.space.MultiGrid(size, size, True)
+        self.grid = mesa.space.MultiGrid(size, size, False)
         self.schedule = mesa.time.RandomActivation(self)
         self.running = True
         self.clients = []
