@@ -76,6 +76,8 @@ class TransportModel(mesa.Model):
             "request_time": lambda b: b.request_time if b.type == "Passenger" else None,
             "pickup_time": lambda b: b.pickup_time if b.type == "Passenger" else None,
             "dropoff_time": lambda b: b.dropoff_time if b.type == "Passenger" else None,
+            "shortest distance": lambda b: b.shortest_distance if b.type == "Passenger" else None,
+
             }
         )
 
