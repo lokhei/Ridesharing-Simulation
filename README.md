@@ -14,3 +14,6 @@ $ pip install Mesa
 $ cd TransportModel
 $ python transport_vis.py
 ```
+
+
+Run `python transport_vis.py --h` for more configuration options
